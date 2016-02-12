@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project basedir="." default="help">
+	<property file="local.properties"/>
+	<property file="build.properties" />
+	<property name="worklight.server.url" value="${worklight.server.protocol}://${worklight.server.host}:${worklight.server.port}/${worklight.server.context}"/>
+	<property name="war.file.name" value="${project.name}.war"/>
+	<property name="app.dir" value="${project.dir}/apps/${app.name}"/>
+	
+	<taskdef resource="net/sf/antcontrib/antlib.xml">
+		<classpath>
+			<pathelement location="ant-contrib-1.0b3.jar"/>
+		</classpath>
+	</taskdef>
+	<taskdef resource="com/worklight/ant/defaults.properties">
+		<classpath>
+			<pathelement location="worklight-ant-builder.jar"/>
+		</classpath>
+	</taskdef>
+	<taskdef resource="com/worklight/ant/deployers/antlib.xml">
+	    <classpath>
+			<pathelement location="worklight-ant-deployer.jar"/>
+	    </classpath>
+	</taskdef>
+	
+	
+	<!--Targets -->
+	<target name="init">
+		<echo message="Building for ${worklight.server.url}" />
+		<echo message="Project dir: ${project.dir}" />
+		<echo message="App dir: ${app.dir}" />
+		<echo message="Cleaning...." />
+		<delete dir="${build.dir}"/>
+		<delete dir="${app.dir}/android/native/assets/www"/>
+		<delete dir="${app.dir}/android/native/bin"/>
+		<delete dir="${app.dir}/iphone/native/www"/>
+		<delete dir="${app.dir}/iphone/package"/>
+		<mkdir dir="${build.dir}"/>
+	</target>
+	
+	<target name="buildWar">
+		<echo message="Building the war file"/>
+		<war-builder projectfolder="${project.dir}" destinationfolder="${build.dir}" warfile="${build.dir}/${war.file.name}" classesFolder="${build.classes.dir}"/>
+	</target>
+	
+	<target name="buildApps" depends="init">
+		<app-builder worklightServerHost="${worklight.server.url}" applicationFolder="${app.dir}" nativeProjectPrefix="${project.name}" outputFolder="${build.dir}" />
+	</target>
+	
+	<target name="buildAdapters" depends="init">
+		<for param="adapter" trim="true">
+			<path>
+				<dirset dir="${project.dir}/adapters">
+					<include name="*"/>
+				</dirset>
+			</path>
+			<sequential>
+				<echo message="Building MobileFirst Adapter @{adapter}" />
+				<adapter-builder folder="@{adapter}" destinationFolder="${build.dir}" />
+			</sequential>
+		</for>
+	</target>
+	
+	<target name="buildAndroid">
+		<delete dir="${app.dir}/android/native/bin"/>
+		<mkdir dir="${app.dir}/android/native/bin"/>
+		<exec executable="${android.sdk.path}/tools/android">
+			<arg value="update"/>
+			<arg value="project"/>
+			<arg value="-p"/>
+			<arg value="${app.dir}/android/native"/>
+		</exec>
+		<ant antfile="${app.dir}/android/native/build.xml" target="debug" useNativeBasedir="true" inheritAll="true"/>
+		<copy todir="${build.dir}" overwrite="true">
+			<fileset dir="${app.dir}/android/native/bin" includes="*.apk"/>
+		</copy>
+	</target>
+
+	<target name="packClients">
+		<zip destfile="${build.dir}/client_android.zip"  basedir="${app.dir}/android/native"/>
+		<zip destfile="${build.dir}/client_iphone.zip"  basedir="${app.dir}/iphone/native"/>
+	</target>	
+	
+	<target name="buildServer" depends="buildApps, buildWar, buildAdapters, packClients">
+		<echo message="Building is done to: ${build.dir}"/>
+	</target>
+	
+	<target name="deployAdapters">
+		<echo message="Deploying all adapters to ${deplyoment.url}"/>
+		<for param="adapter" trim="true">
+			<path>
+				<fileset dir="${build.dir}/">
+					<include name="*.adapter"/>
+				</fileset>
+			</path>
+			<sequential>
+				<echo message="Deploying MobileFirst Adapter @{adapter}" />
+				<wladm url="${deplyoment.url}" user="${WLAdminUsername}" password="${WLAdminPassword}" secure="false">
+					<deploy-adapter runtime="${worklight.runtime.name}" file="@{adapter}"/>
+				</wladm>
+			</sequential>
+		</for>
+	    <echo message="Adapters deployment is done"/>
+	</target>
+	
+	<target name="deployApps">
+		<echo message="Deploying WL App from ${build.dir}/${app.name}-all.wlapp to ${deplyoment.url}"/>
+		<wladm url="${deplyoment.url}" user="${WLAdminUsername}" password="${WLAdminPassword}" secure="false">
+	      <deploy-app runtime="${worklight.runtime.name}" file="${build.dir}/${app.name}-all.wlapp"/>
+	    </wladm>
+		<echo message="WLAPP deployment is done"/>
+	</target>
+	
+	<target name="deployAll" depends="deployAdapters, deployApps">
+		<echo message="Deploying all is done"/>
+	</target>
+	
+	<target name="buildDeployServer" depends="buildServer, deployAll">
+		<echo message="Building is done to: ${build.dir}"/>
+	</target>
+
+	<target name="buildDeployAdapters" depends="buildAdapters, deployAdapters">
+		<echo message="Building is done from ${build.dir} to ${deplyoment.url}"/>
+	</target>
+
+	<target name="buildDeployApps" depends="buildApps, deployApps">
+		<echo message="Building is done from ${build.dir} to ${deplyoment.url}"/>
+	</target>
+	
+	<target name="help">
+		<echo message="Please use build targets: buildWar, buildApps, buildAdapters, buildAndroid, packClients, buildServer, deployAdapters, deployApps, deployAll, buildDeployApps, buildDeployAdapters or buildDeployServer"/>
+	</target>
+</project>
