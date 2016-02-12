@@ -2,7 +2,6 @@
 Before running this script make, sure to:
 - Place "worklight-ant-builder.jar" & "worklight-ant-deployer.jar" files in the same directory as build.xml.
 - Modify build.properties with your configuration
-- If you have more adapters, you'll need to duplicate "adapter-builder" & "deploy-adapter" lines in build.xml
 
 ## Ant targets:
 - buildWar: to build the WAR file
