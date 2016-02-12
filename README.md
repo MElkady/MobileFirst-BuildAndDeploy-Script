@@ -1,3 +1,6 @@
+# Ant Script to build IBM MobileFirst project
+Refer to blog entry [here](http://www.mobilefirst.tips/automating-build-deployment-of-mobilefirst-platform-projects/)
+
 ## Note
 Before running this script make, sure to:
 - Place "worklight-ant-builder.jar" & "worklight-ant-deployer.jar" files in the same directory as build.xml.
